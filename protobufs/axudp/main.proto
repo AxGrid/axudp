@@ -1,0 +1,33 @@
+syntax="proto3";
+
+package com.axgrid.gomino;
+
+option java_package = "com.axgrid.gomino";
+option java_multiple_files = true;
+option csharp_namespace = "AxGrid.Internal.Proto";
+
+enum PacketMode {
+    PM_OPTIONAL_CONSISTENTLY = 0;
+    PM_OPTIONAL = 1;
+    PM_MANDATORY_CONSISTENTLY = 3;
+    PM_MANDATORY = 4;
+}
+
+
+enum PacketTag {
+    PT_PAYLOAD = 0;  // пришли обычные данные
+    PT_GZIP_PAYLOAD = 1; // пришли запакованные данные
+    PT_DONE = 8;     // данные о завершении частей пакета
+    PT_OUTDATE = 9;  // пакет устарел, повторять не нужно
+    PT_ERROR = 10;   // в пакете какая-то ошибка и его нужно полностью повторить или отбросить
+}
+
+message Packet {
+    bytes payload = 1;
+    uint64 id = 2;
+    PacketTag tag = 3;
+    bytes parts = 4;
+    uint32 parts_count = 5;
+    PacketMode mode = 6;
+}
+
