@@ -37,6 +37,19 @@ func getIntFromBytes(lens []byte) int {
 	return int(binary.LittleEndian.Uint16(lens))
 }
 
+func getChunk(b []byte, l int) [][]byte {
+	var chunk []byte
+	chunks := make([][]byte, 0, len(b)/l+1)
+	for len(b) >= l {
+		chunk, b = b[:l], b[l:]
+		chunks = append(chunks, chunk)
+	}
+	if len(b) > 0 {
+		chunks = append(chunks, b[:len(b)])
+	}
+	return chunks
+}
+
 func dataTail(b []byte) [][]byte {
 	var res [][]byte
 	size := getIntFromBytes(b[0:2])

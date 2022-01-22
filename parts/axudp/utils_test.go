@@ -32,3 +32,22 @@ func TestMergeList(t *testing.T) {
 	mergeBoolLists(&a, b)
 	assert.EqualValues(t, a, []bool{true, false, true, true})
 }
+
+func TestChunk(t *testing.T) {
+	a := []byte{1, 2, 3, 4, 5}
+	s := getChunk(a, 3)
+	assert.Equal(t, len(s), 2)
+	assert.EqualValues(t, s[0], []byte{1, 2, 3})
+	assert.EqualValues(t, s[1], []byte{4, 5})
+	s = getChunk(a, 5)
+	assert.Equal(t, len(s), 1)
+	assert.EqualValues(t, s[0], []byte{1, 2, 3, 4, 5})
+	s = getChunk(a, 10)
+	assert.Equal(t, len(s), 1)
+	assert.EqualValues(t, s[0], []byte{1, 2, 3, 4, 5})
+
+	a = []byte{}
+	s = getChunk(a, 10)
+	assert.Equal(t, len(s), 0)
+
+}

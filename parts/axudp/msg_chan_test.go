@@ -96,6 +96,51 @@ func TestOptionalConsistentlyChannel(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 }
 
+func TestMandatoryChannel(t *testing.T) {
+	resp := make(chan *pproto.Packet)
+	c := newIncomingChannel(pproto.PacketMode_PM_MANDATORY_CONSISTENTLY, resp)
+	go func() {
+		for {
+			r := <-resp
+			log.Debug().Interface("pck", r).Msg("response")
+		}
+	}()
+
+	go func() {
+		data := <-c.C
+		log.Debug().Hex("data", data).Msg("received")
+		assert.Equal(t, data, []byte{10, 11})
+		data = <-c.C
+		log.Debug().Hex("data", data).Msg("received")
+		assert.Equal(t, data, []byte{0, 1, 2, 3, 4, 5})
+
+	}()
+
+	err := c.hold(&pproto.Packet{
+		Id:         2,
+		PartsCount: 2,
+		Parts:      booleansToBytes([]bool{false, true}),
+		Payload:    []byte{4, 5},
+	})
+	assert.Nil(t, err)
+	err = c.hold(&pproto.Packet{
+		Id:         2,
+		PartsCount: 2,
+		Parts:      booleansToBytes([]bool{true, false}),
+		Payload:    []byte{0, 1, 2, 3},
+	})
+	assert.Nil(t, err)
+	time.Sleep(time.Millisecond * 10)
+	err = c.hold(&pproto.Packet{
+		Id:         1,
+		PartsCount: 1,
+		Parts:      booleansToBytes([]bool{true}),
+		Payload:    []byte{10, 11},
+	})
+	assert.Nil(t, err)
+	time.Sleep(time.Millisecond * 20)
+}
+
 //
 //func TestMandatoryChannel(t *testing.T) {
 //	retryChan := make(chan *pproto.Packet)
