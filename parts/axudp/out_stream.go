@@ -10,29 +10,68 @@ import (
 
 var retryTTL = time.Millisecond * 500
 
-type outStream struct {
+type OutStream struct {
+	optional              *outOptionalStream
+	optionalConsistently  *outOptionalStream
+	mandatory             *outMandatoryStream
+	mandatoryConsistently *outMandatoryConsistentlyStream
+}
+
+func NewOutStream(outChan chan *pproto.Packet) *OutStream {
+	return &OutStream{
+		optional:              newOutOptionalStream(outChan, pproto.PacketMode_PM_OPTIONAL),
+		optionalConsistently:  newOutOptionalStream(outChan, pproto.PacketMode_PM_OPTIONAL_CONSISTENTLY),
+		mandatory:             newOutMandatoryStream(outChan),
+		mandatoryConsistently: newOutMandatoryConsistentlyStream(outChan),
+	}
+}
+
+func (os *OutStream) send(payload []byte, mode pproto.PacketMode) {
+	switch mode {
+	case pproto.PacketMode_PM_OPTIONAL:
+		os.optional.hold(payload)
+	case pproto.PacketMode_PM_OPTIONAL_CONSISTENTLY:
+		os.optionalConsistently.hold(payload)
+	case pproto.PacketMode_PM_MANDATORY:
+		os.mandatory.hold(payload)
+	case pproto.PacketMode_PM_MANDATORY_CONSISTENTLY:
+		os.mandatoryConsistently.hold(payload)
+	}
+}
+
+func (os *OutStream) response(pck *pproto.Packet) {
+	switch pck.Mode {
+	case pproto.PacketMode_PM_MANDATORY:
+		os.mandatory.response(pck)
+	case pproto.PacketMode_PM_MANDATORY_CONSISTENTLY:
+		os.mandatoryConsistently.response(pck)
+	}
+}
+
+type outStreamBase struct {
 	mtu  int
 	S    chan *pproto.Packet
 	Mode pproto.PacketMode
 }
 
-func (os *outStream) setMtu(mtu int) {
+func (os *outStreamBase) setMtu(mtu int) {
 	os.mtu = mtu
 }
 
-func (os *outStream) send(packet *pproto.Packet) {
+func (os *outStreamBase) send(packet *pproto.Packet) {
+	log.Trace().Hex("data", packet.Payload).Msg("send")
 	packet.Mode = os.Mode
 	os.S <- packet
 }
 
 type outOptionalStream struct {
-	outStream
+	outStreamBase
 	lastId uint64
 }
 
 func newOutOptionalStream(outChan chan *pproto.Packet, mode pproto.PacketMode) *outOptionalStream {
 	return &outOptionalStream{
-		outStream: outStream{
+		outStreamBase: outStreamBase{
 			mtu:  400,
 			S:    outChan,
 			Mode: mode,
@@ -59,7 +98,7 @@ func (os *outOptionalStream) hold(payload []byte) {
 }
 
 type outMandatoryStream struct {
-	outStream
+	outStreamBase
 	lastId uint64
 	out    map[uint64]*outMandatoryHolder
 	lock   sync.RWMutex
@@ -67,7 +106,7 @@ type outMandatoryStream struct {
 
 func newOutMandatoryStream(outChan chan *pproto.Packet) *outMandatoryStream {
 	return &outMandatoryStream{
-		outStream: outStream{
+		outStreamBase: outStreamBase{
 			mtu:  400,
 			S:    outChan,
 			Mode: pproto.PacketMode_PM_MANDATORY,
@@ -174,7 +213,7 @@ func (oh *outMandatoryHolder) getPackets() []*pproto.Packet {
 }
 
 type outMandatoryConsistentlyStream struct {
-	outStream
+	outStreamBase
 	lastId uint64
 	h      *outMandatoryHolder
 	out    [][]byte
@@ -183,7 +222,7 @@ type outMandatoryConsistentlyStream struct {
 
 func newOutMandatoryConsistentlyStream(outChan chan *pproto.Packet) *outMandatoryConsistentlyStream {
 	return &outMandatoryConsistentlyStream{
-		outStream: outStream{
+		outStreamBase: outStreamBase{
 			mtu:  400,
 			S:    outChan,
 			Mode: pproto.PacketMode_PM_MANDATORY_CONSISTENTLY,
