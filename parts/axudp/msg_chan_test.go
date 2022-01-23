@@ -92,7 +92,6 @@ func TestOptionalConsistentlyChannel(t *testing.T) {
 		Payload:    []byte{10, 11},
 	})
 	assert.Nil(t, err)
-
 	time.Sleep(time.Millisecond * 10)
 }
 
@@ -105,7 +104,6 @@ func TestMandatoryChannel(t *testing.T) {
 			log.Debug().Interface("pck", r).Msg("response")
 		}
 	}()
-
 	go func() {
 		data := <-c.C
 		log.Debug().Hex("data", data).Msg("received")
@@ -113,7 +111,6 @@ func TestMandatoryChannel(t *testing.T) {
 		data = <-c.C
 		log.Debug().Hex("data", data).Msg("received")
 		assert.Equal(t, data, []byte{0, 1, 2, 3, 4, 5})
-
 	}()
 
 	err := c.hold(&pproto.Packet{

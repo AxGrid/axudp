@@ -80,6 +80,14 @@ func booleanIndex(a []bool) int {
 	return -1
 }
 
+func indexInBoolean(count int, index int) []bool {
+	res := make([]bool, count)
+	if index >= 0 && index < count {
+		res[index] = true
+	}
+	return res
+}
+
 func allBooleans(a []bool) bool {
 	for _, x := range a {
 		if !x {

@@ -29,5 +29,6 @@ message Packet {
     bytes parts = 4;
     uint32 parts_count = 5;
     PacketMode mode = 6;
+    uint32 mtu = 7;
 }
 

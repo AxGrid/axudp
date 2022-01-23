@@ -15,6 +15,7 @@ var packetRetryTTL = time.Millisecond * 100
 type iChannel interface {
 	delete(id uint64)
 	done(id uint64)
+	getMode() pproto.PacketMode
 }
 
 type incomingChannel struct {
@@ -36,6 +37,10 @@ func newIncomingChannel(mode pproto.PacketMode, responseChannel chan *pproto.Pac
 		C:       make(chan []byte),
 		D:       responseChannel,
 	}
+}
+
+func (ic *incomingChannel) getMode() pproto.PacketMode {
+	return ic.mode
 }
 
 func (ic *incomingChannel) hold(pck *pproto.Packet) error {
@@ -194,7 +199,61 @@ type outgoingChannel struct {
 	id      uint64
 	mode    pproto.PacketMode
 	lock    sync.Mutex
-	R       chan *pproto.Packet // канал для получения ответа о доставке incomingChannel.D
+	R       chan *pproto.Packet // <- канал для получения ответа о доставке incomingChannel.D
+	S       chan *pproto.Packet // -> канал для отправки
+}
+
+func (oc *outgoingChannel) delete(id uint64) {
+	oc.lock.Lock()
+	defer oc.lock.Unlock()
+	oc.doneUnsafe(id)
+}
+
+func (oc *outgoingChannel) doneUnsafe(id uint64) {
+	holder, ok := oc.holders[id]
+	if !ok {
+		return
+	}
+	log.Trace().Uint64("id", id).Msg("done holder")
+	if oc.mode == pproto.PacketMode_PM_MANDATORY_CONSISTENTLY {
+		oc.lastId++
+	}
+	holder.exit <- true
+}
+
+func (oc *outgoingChannel) done(id uint64) {
+	if oc.mode == pproto.PacketMode_PM_MANDATORY_CONSISTENTLY {
+		oc.lastId++
+	}
+}
+
+func newOutgoingChannel(mode pproto.PacketMode, sendChannel chan *pproto.Packet) *outgoingChannel {
+	res := &outgoingChannel{
+		mode:    mode,
+		S:       sendChannel,
+		R:       make(chan *pproto.Packet),
+		lock:    sync.Mutex{},
+		holders: map[uint64]*incomingHolder{},
+	}
+	return res
+}
+
+func (oc *outgoingChannel) hold(payload []byte, mtu int) error {
+	switch oc.mode {
+	case pproto.PacketMode_PM_OPTIONAL, pproto.PacketMode_PM_OPTIONAL_CONSISTENTLY:
+		h := newOutgoingHolder(oc, payload, mtu)
+		for _, p := range h.getParts() {
+			oc.S <- p
+		}
+		h.exit <- true
+	case pproto.PacketMode_PM_MANDATORY_CONSISTENTLY, pproto.PacketMode_PM_MANDATORY:
+
+	}
+	return nil
+}
+
+func (oc *outgoingChannel) getMode() pproto.PacketMode {
+	return oc.mode
 }
 
 type outgoingHolder struct {
@@ -205,8 +264,8 @@ type outgoingHolder struct {
 	payloads   [][]byte
 	tag        pproto.PacketTag
 	exit       chan bool
-	//parent     iChannel
-	ttlTm *time.Timer
+	ttlTm      *time.Timer
+	parent     iChannel
 }
 
 func newOutgoingHolder(parent iChannel, payload []byte, mtu int) *outgoingHolder {
@@ -219,8 +278,8 @@ func newOutgoingHolder(parent iChannel, payload []byte, mtu int) *outgoingHolder
 		payloads:   chank,
 		tag:        pproto.PacketTag_PT_PAYLOAD,
 		exit:       make(chan bool, 1),
-		//parent:     parent,
-		ttlTm: time.NewTimer(sendPacketTTL),
+		ttlTm:      time.NewTimer(sendPacketTTL),
+		parent:     parent,
 	}
 
 	go func() {
@@ -239,5 +298,26 @@ func newOutgoingHolder(parent iChannel, payload []byte, mtu int) *outgoingHolder
 		}
 		parent.delete(res.id)
 	}()
+	return res
+}
+
+func (oh *outgoingHolder) getParts() []*pproto.Packet {
+	var res []*pproto.Packet
+	for i, h := range oh.parts {
+		if h {
+			continue
+		}
+		pck := &pproto.Packet{
+			Id:         oh.id,
+			PartsCount: uint32(oh.partsCount),
+			Mode:       oh.parent.getMode(),
+			Tag:        oh.tag,
+			Payload:    oh.payloads[i],
+		}
+		p := make([]bool, pck.PartsCount)
+		p[i] = true
+		pck.Parts = booleansToBytes(p)
+		res = append(res, pck)
+	}
 	return res
 }
