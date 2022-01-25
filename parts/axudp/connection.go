@@ -1,6 +1,7 @@
 package axudp
 
 import (
+	pproto "axudp/target/generated-sources/proto/axudp"
 	"github.com/rs/zerolog/log"
 	"net"
 	"sync"
@@ -8,13 +9,31 @@ import (
 )
 
 type Connection struct {
-	Addr     *net.UDPAddr
-	ttlTimer *time.Timer
+	Addr      *net.UDPAddr
+	ttlTimer  *time.Timer
+	InStream  *InStream
+	OutStream *OutStream
+	InChannel chan []byte
 }
 
 var connectionTtl = time.Second * 10
 var connectionMap = map[string]*Connection{}
 var connectionLock = sync.RWMutex{}
+
+func newConnection(addr *net.UDPAddr, outChan chan *pproto.Packet) *Connection {
+	servChan := make(chan []byte)
+	return &Connection{
+		Addr:      addr,
+		ttlTimer:  time.NewTimer(connectionTtl),
+		InStream:  NewInStream(outChan, servChan),
+		OutStream: NewOutStream(outChan),
+	}
+}
+
+func (c *Connection) receive(pck *pproto.Packet) {
+	c.ttlTimer.Reset(connectionTtl)
+	c.InStream.receive(pck)
+}
 
 func addOrUpdateConnection(pck *UDPServerPacket) error {
 	connectionLock.RLock()
