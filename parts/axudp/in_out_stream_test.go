@@ -37,5 +37,4 @@ func TestInOutConnect(t *testing.T) {
 
 	out.send([]byte{3, 4, 5}, pproto.PacketMode_PM_OPTIONAL)
 	time.Sleep(time.Millisecond * 30)
-
 }
