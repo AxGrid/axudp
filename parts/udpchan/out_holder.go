@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var packetRetryTTL = time.Millisecond * 1200
+var packetRetryTTL = time.Millisecond * 200
 var packetRetryCount = 5
 
 type HolderResponse struct {
@@ -103,7 +103,8 @@ func (h *OutHolder) Start() {
 					}
 					break MainLoop
 				} else {
-					h.send()
+					log.Trace().Uint64("id", h.id).Bools("parts", h.parts).Msg("retry")
+					go func() { h.send() }()
 				}
 			}
 		}

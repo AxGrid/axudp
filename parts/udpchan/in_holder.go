@@ -71,6 +71,7 @@ func (h *InHolder) Receive(pck *pproto.Packet) {
 		if h.timer != nil {
 			h.timer.Reset(packetDoneTTL)
 		}
+		log.Trace().Uint64("id", h.id).Int("partsCount", h.partsCount).Msg("packet done")
 		h.done = true
 		h.responseChan <- HolderResponse{id: h.id, payload: bytesJoin(h.payload...)}
 	}

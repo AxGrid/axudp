@@ -62,6 +62,7 @@ func (c *InMandatoryChannel) Receive(pck *pproto.Packet) {
 	defer c.lock.Unlock()
 	holder, ok := c.incoming[pck.Id]
 	if !ok {
+
 		holder = NewInHolder(pck.Id, int(pck.PartsCount), c.responseChan, c.mode, c.sendChan)
 		c.incoming[pck.Id] = holder
 		holder.Start()

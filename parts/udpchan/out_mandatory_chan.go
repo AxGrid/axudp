@@ -2,6 +2,7 @@ package udpchan
 
 import (
 	pproto "axudp/target/generated-sources/proto/axudp"
+	"github.com/rs/zerolog/log"
 	"sync"
 	"sync/atomic"
 )
@@ -84,6 +85,7 @@ func (c *OutMandatoryChannel) Send(payload []byte) {
 }
 
 func (c *OutMandatoryChannel) Response(pck *pproto.Packet) {
+	log.Trace().Uint64("id", pck.Id).Bools("parts", bytesToBooleans(pck.Parts)[:pck.PartsCount]).Str("tag", pck.Tag.String()).Str("mode", c.mode.String()).Msg("receive response")
 	c.lock.RLock()
 	h, ok := c.outgoing[pck.Id]
 	c.lock.RUnlock()
@@ -112,7 +114,7 @@ func NewOutMandatoryConsistentChannel(mtu int, sendChan chan []byte, errorChan c
 		mtu:          mtu,
 		sendChan:     sendChan,
 		errorChan:    errorChan,
-		mode:         pproto.PacketMode_PM_MANDATORY,
+		mode:         pproto.PacketMode_PM_MANDATORY_CONSISTENTLY,
 		closeChan:    make(chan bool, 1),
 		responseChan: make(chan HolderResponse),
 		outgoing:     nil,
@@ -131,16 +133,16 @@ func NewOutMandatoryConsistentChannel(mtu int, sendChan chan []byte, errorChan c
 				res.lock.Lock()
 				if r.err != nil {
 					if res.outgoing != nil {
+						log.Error().Err(r.err).Msg("fail udp")
 						res.outgoing.Stop()
 					}
 					res.errorChan <- r.err
 					return
-				} else {
-					if res.outgoing != nil && res.outgoing.id == r.id {
-						res.outgoing.Stop()
-						res.outgoing = nil
-						go func() { res.next() }()
-					}
+				}
+				if res.outgoing != nil && res.outgoing.id == r.id {
+					res.outgoing.Stop()
+					res.outgoing = nil
+					go func() { res.next() }()
 				}
 				res.lock.Unlock()
 			}
@@ -152,6 +154,7 @@ func NewOutMandatoryConsistentChannel(mtu int, sendChan chan []byte, errorChan c
 func (c *OutMandatoryConsistentChannel) next() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
 	if c.outgoing != nil {
 		return
 	}
@@ -163,6 +166,7 @@ func (c *OutMandatoryConsistentChannel) next() {
 	c.queue = c.queue[1:]
 	id := atomic.AddUint64(&c.id, 1)
 	c.outgoing, err = NewOutHolder(id, payload, c.mtu, c.responseChan, c.mode, c.sendChan)
+	log.Info().Uint64("id", id).Int("len", len(payload)).Msg("next")
 	if err != nil {
 		c.outgoing = nil
 		c.errorChan <- err
@@ -182,6 +186,7 @@ func (c *OutMandatoryConsistentChannel) Send(payload []byte) {
 func (c *OutMandatoryConsistentChannel) Response(pck *pproto.Packet) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
+	log.Trace().Uint64("id", pck.Id).Bools("parts", bytesToBooleans(pck.Parts)[:pck.PartsCount]).Str("tag", pck.Tag.String()).Str("mode", c.mode.String()).Msg("receive response")
 	if c.outgoing == nil {
 		return
 	}

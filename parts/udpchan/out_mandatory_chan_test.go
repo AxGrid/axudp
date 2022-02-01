@@ -116,3 +116,55 @@ func TestNewOutMandatoryConsistentChannel(t *testing.T) {
 	assert.Equal(t, resendCount, uint64(4+3))
 	assert.Nil(t, er)
 }
+
+func TestNewOutMandatoryConsistentMultiChannel(t *testing.T) {
+
+	sendChan := make(chan []byte)
+	errorChan := make(chan error)
+	var resendCount uint64 = 0
+	var er error
+	omc := NewOutMandatoryConsistentChannel(10, sendChan, errorChan)
+	count := 0
+	go func() {
+		var id uint64 = 0
+		var parts []bool
+		for {
+			select {
+			case send := <-sendChan:
+				atomic.AddUint64(&resendCount, 1)
+				var pck pproto.Packet
+				assert.Nil(t, proto.Unmarshal(send, &pck))
+				log.Debug().Hex("send", pck.Payload).Uint64("id", pck.Id).Bools("parts", bytesToBooleans(pck.Parts)[:pck.PartsCount]).Msg("Send to UDP")
+				//omc.Response(pck)
+				if id != pck.Id {
+					count++
+					parts = make([]bool, pck.PartsCount)
+					id = pck.Id
+				}
+				ind := booleanIndex(bytesToBooleans(pck.Parts))
+				parts[ind] = true
+				omc.Response(&pproto.Packet{
+					Tag:        pproto.PacketTag_PT_DONE,
+					Parts:      booleansToBytes(parts),
+					PartsCount: pck.PartsCount,
+				})
+			case err := <-errorChan:
+				er = err
+				log.Error().Err(err).Msg("fail of holder")
+			}
+		}
+	}()
+
+	packetRetryTTL = time.Millisecond * 100
+	packetRetryCount = 4
+
+	for i := 1; i < 50; i++ {
+		omc.Send(make([]byte, i))
+	}
+	time.Sleep(time.Millisecond * 2000)
+	assert.Nil(t, er)
+	assert.Equal(t, len(omc.queue), 0)
+	assert.Nil(t, omc.outgoing)
+	assert.Equal(t, count, 49)
+
+}

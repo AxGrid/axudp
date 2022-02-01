@@ -1,10 +1,8 @@
 package transport
 
 import (
-	"axudp/parts/udpchan"
 	pproto "axudp/target/generated-sources/proto/axudp"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/protobuf/proto"
 	"net"
 	"sync"
 )
@@ -117,82 +115,5 @@ func (s *Server) readLoop() {
 				conn.receive(pck)
 			}
 		}(slice, remoteAddr)
-	}
-}
-
-type Connection struct {
-	remoteAddr    net.UDPAddr
-	remoteAddrStr string
-	close         chan bool
-	mtu           int
-	errorChan     chan error
-	inMandatory   *udpchan.InMandatoryChannel
-	outMandatory  *udpchan.OutMandatoryChannel
-}
-
-func NewConnection(remoteAddrStr string, errorServerChan chan ConnectionResponse, send func([]byte), service func([]byte)) *Connection {
-	res := &Connection{
-		remoteAddrStr: remoteAddrStr,
-		mtu:           startMTU,
-		errorChan:     make(chan error),
-		close:         make(chan bool, 1),
-	}
-	servChan := make(chan []byte)
-	sendChan := make(chan []byte)
-	res.inMandatory = udpchan.NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, res.mtu, servChan, sendChan, res.errorChan)
-	res.outMandatory = udpchan.NewOutMandatoryChannel(res.mtu, sendChan, res.errorChan)
-
-	go func() {
-		for {
-			select {
-			case <-res.close:
-				res.outMandatory.Stop()
-				res.inMandatory.Stop()
-				return
-			case b := <-sendChan:
-				send(b)
-			case err := <-res.errorChan:
-				errorServerChan <- ConnectionResponse{err: err, address: res.remoteAddrStr}
-				res.outMandatory.Stop()
-				res.inMandatory.Stop()
-				return
-			case payload := <-servChan:
-				service(payload)
-			}
-		}
-	}()
-	return res
-}
-
-func (c *Connection) receive(data []byte) {
-	var pck pproto.Packet
-	err := proto.Unmarshal(data, &pck)
-	if err != nil {
-		c.errorChan <- err
-		return
-	}
-
-	switch pck.Tag {
-	case pproto.PacketTag_PT_DONE:
-		switch pck.Mode {
-		case pproto.PacketMode_PM_MANDATORY:
-			c.outMandatory.Response(&pck)
-		}
-	case pproto.PacketTag_PT_PAYLOAD, pproto.PacketTag_PT_GZIP_PAYLOAD:
-		switch pck.Mode {
-		case pproto.PacketMode_PM_MANDATORY:
-			log.Trace().Bools("parts", bytesToBooleans(pck.Parts)[:pck.PartsCount]).Uint64("id", pck.Id).Msg("connection receive")
-			c.inMandatory.Receive(&pck)
-		}
-	}
-
-}
-
-func (c *Connection) Send(mode pproto.PacketMode, payload []byte) {
-	switch mode {
-	case pproto.PacketMode_PM_MANDATORY:
-		c.outMandatory.Send(payload)
-	default:
-		log.Fatal().Msgf("mode %s not implemented", mode.String())
 	}
 }
