@@ -1,4 +1,4 @@
-package axudp
+package udpchan
 
 import (
 	"axudp/shared/axtools"
@@ -48,19 +48,6 @@ func getChunk(b []byte, l int) [][]byte {
 		chunks = append(chunks, b[:len(b)])
 	}
 	return chunks
-}
-
-func dataTail(b []byte) [][]byte {
-	var res [][]byte
-	size := getIntFromBytes(b[0:2])
-	l := len(b)
-	if l >= size+2 {
-		res = append(res, b[2:size+2])
-		if l > size+2 {
-			res = append(res, dataTail(b[:size+2])...)
-		}
-	}
-	return res
 }
 
 func mergeBoolLists(into *[]bool, b []bool) {

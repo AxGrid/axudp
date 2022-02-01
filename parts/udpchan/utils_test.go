@@ -1,4 +1,4 @@
-package axudp
+package udpchan
 
 import (
 	"github.com/rs/zerolog/log"
