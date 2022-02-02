@@ -1,10 +1,9 @@
 package main
 
 import (
-	ax_tools "axudp/shared/axtools"
-	shell_runner "axudp/shared/shell-runner"
 	"flag"
 	"fmt"
+	shell_runner "github.com/axgrid/axudp/shared/shell-runner"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"os"
@@ -29,7 +28,8 @@ type ProtoFile struct {
 func main() {
 	flag.Parse()
 	protoc = *pprotoc
-	ax_tools.InitLogger("info")
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05,000"}).Level(zerolog.InfoLevel)
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -59,7 +59,7 @@ func main() {
 			log.Info().Msgf("Found file %s", path)
 
 			//protoMap[ax_tools.GetFirstDir(Path)]
-			pName := ax_tools.GetFirstDir(path)
+			pName := getFirstDir(path)
 			protoMap[pName] = append(protoMap[pName], ProtoFile{
 				Path:    path,
 				Project: pName,
@@ -93,4 +93,17 @@ func createCommand(protos []ProtoFile, project string) string {
 		files += fmt.Sprintf("%s/%s ", *root, p.Path)
 	}
 	return fmt.Sprintf("--proto_path=%s/%s/ ", *root, project) + opts + " " + files
+}
+
+func getFirstDir(path string) string {
+	dirs := strings.Split(path, "/")
+	if len(dirs) < 2 {
+		return ""
+	}
+
+	dir := dirs[len(dirs)-2]
+	if dir == "." {
+		dir = ""
+	}
+	return dir
 }

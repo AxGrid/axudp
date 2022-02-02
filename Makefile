@@ -8,7 +8,7 @@ deps:
 
 
 simple-proto: deps
-	go run -mod vendor build-tools/simple-proto-maker/simple-proto-maker.go --out=./target/generated-sources/proto/
+	go run -mod vendor build-tools/simple-proto-maker/simple-proto-maker.go --out=./generated-sources/proto/
 
 csharp-proto:
 	rm -rf ./target/csharp_out/proto/

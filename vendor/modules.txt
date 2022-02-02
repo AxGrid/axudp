@@ -1,24 +1,10 @@
-# github.com/agrison/go-commons-lang v0.0.0-20200208220349-58e9fcb95174
-## explicit
-github.com/agrison/go-commons-lang/stringUtils
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
 # github.com/kr/text v0.2.0
 ## explicit
-# github.com/logrusorgru/aurora v2.0.3+incompatible
-## explicit
-github.com/logrusorgru/aurora
-# github.com/mattn/go-runewidth v0.0.13
-## explicit
-github.com/mattn/go-runewidth
-# github.com/olekukonko/tablewriter v0.0.5
-## explicit
-github.com/olekukonko/tablewriter
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/rivo/uniseg v0.2.0
-github.com/rivo/uniseg
 # github.com/rs/zerolog v1.23.0
 ## explicit
 github.com/rs/zerolog
@@ -28,15 +14,6 @@ github.com/rs/zerolog/log
 # github.com/stretchr/testify v1.7.0
 ## explicit
 github.com/stretchr/testify/assert
-# gitlab.com/NebulousLabs/fastrand v0.0.0-20181126182046-603482d69e40
-## explicit
-gitlab.com/NebulousLabs/fastrand
-# golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3
-## explicit
-golang.org/x/crypto/blake2b
-# golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
-## explicit
-golang.org/x/sys/cpu
 # google.golang.org/protobuf v1.27.1
 ## explicit
 google.golang.org/protobuf/encoding/prototext
