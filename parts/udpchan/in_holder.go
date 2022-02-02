@@ -3,7 +3,7 @@ package udpchan
 import (
 	pproto "axudp/target/generated-sources/proto/axudp"
 	"fmt"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
@@ -24,9 +24,10 @@ type InHolder struct {
 	closeChan    chan bool
 	lock         sync.Mutex
 	timer        *time.Timer
+	log          zerolog.Logger
 }
 
-func NewInHolder(id uint64, partsCount int, responseChan chan HolderResponse, mode pproto.PacketMode, sendChan chan []byte) *InHolder {
+func NewInHolder(id uint64, partsCount int, responseChan chan HolderResponse, mode pproto.PacketMode, sendChan chan []byte, llog zerolog.Logger) *InHolder {
 	return &InHolder{
 		id:           id,
 		responseChan: responseChan,
@@ -36,6 +37,7 @@ func NewInHolder(id uint64, partsCount int, responseChan chan HolderResponse, mo
 		mode:         mode,
 		sendChan:     sendChan,
 		closeChan:    nil,
+		log:          llog.With().Str("mode", mode.String()).Uint64("id", id).Str("holder", "in_holder").Int("partCount", partsCount).Logger(),
 	}
 }
 
@@ -51,7 +53,6 @@ func (h *InHolder) Receive(pck *pproto.Packet) {
 	defer h.lock.Unlock()
 
 	if h.parts[index] {
-
 		h.response()
 		return
 	}
@@ -71,7 +72,7 @@ func (h *InHolder) Receive(pck *pproto.Packet) {
 		if h.timer != nil {
 			h.timer.Reset(packetDoneTTL)
 		}
-		log.Trace().Uint64("id", h.id).Int("partsCount", h.partsCount).Msg("packet done")
+		h.log.Trace().Msg("packet done")
 		h.done = true
 		h.responseChan <- HolderResponse{id: h.id, payload: bytesJoin(h.payload...)}
 	}
@@ -79,7 +80,7 @@ func (h *InHolder) Receive(pck *pproto.Packet) {
 
 func (h *InHolder) Stop() {
 	if h.closeChan != nil {
-		log.Debug().Msg("holder stop")
+		h.log.Trace().Msg("holder stop")
 		h.closeChan <- true
 	}
 }

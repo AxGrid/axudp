@@ -2,6 +2,7 @@ package udpchan
 
 import (
 	pproto "axudp/target/generated-sources/proto/axudp"
+	"github.com/rs/zerolog"
 	"sync"
 )
 
@@ -15,9 +16,10 @@ type InMandatoryChannel struct {
 	serviceChan  chan []byte
 	responseChan chan HolderResponse
 	incoming     map[uint64]*InHolder
+	log          zerolog.Logger
 }
 
-func NewInMandatoryChannel(mode pproto.PacketMode, mtu int, serviceChan chan []byte, sendChan chan []byte, errorChan chan error) *InMandatoryChannel {
+func NewInMandatoryChannel(mode pproto.PacketMode, mtu int, serviceChan chan []byte, sendChan chan []byte, errorChan chan error, llog zerolog.Logger) *InMandatoryChannel {
 	res := &InMandatoryChannel{
 		lock:         sync.RWMutex{},
 		mtu:          mtu,
@@ -28,6 +30,7 @@ func NewInMandatoryChannel(mode pproto.PacketMode, mtu int, serviceChan chan []b
 		serviceChan:  serviceChan,
 		responseChan: make(chan HolderResponse),
 		incoming:     map[uint64]*InHolder{},
+		log:          llog.With().Str("mode", mode.String()).Str("chan", "in_mandatory_channel").Logger(),
 	}
 
 	go func() {
@@ -63,7 +66,7 @@ func (c *InMandatoryChannel) Receive(pck *pproto.Packet) {
 	holder, ok := c.incoming[pck.Id]
 	if !ok {
 
-		holder = NewInHolder(pck.Id, int(pck.PartsCount), c.responseChan, c.mode, c.sendChan)
+		holder = NewInHolder(pck.Id, int(pck.PartsCount), c.responseChan, c.mode, c.sendChan, c.log)
 		c.incoming[pck.Id] = holder
 		holder.Start()
 	}

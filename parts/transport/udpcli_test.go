@@ -83,9 +83,9 @@ func TestMandatoryConsistentClientServer(t *testing.T) {
 	srv.serviceListener = func(payload []byte, addr string, con IConnect) error {
 		log.Debug().Hex("payload", payload).Str("addr", addr).Int("len", len(payload)).Msg("server receive")
 		serverReceiveQueue = append(serverReceiveQueue, len(payload))
-		//go func() {
-		//	con.Send(pproto.PacketMode_PM_MANDATORY_CONSISTENTLY, payload)
-		//}()
+		go func() {
+			con.Send(pproto.PacketMode_PM_MANDATORY_CONSISTENTLY, payload)
+		}()
 		return nil
 	}
 
@@ -97,28 +97,22 @@ func TestMandatoryConsistentClientServer(t *testing.T) {
 	for _, pl := range clientSendQueue {
 		cli.Send(pproto.PacketMode_PM_MANDATORY_CONSISTENTLY, pl)
 	}
-	time.Sleep(time.Millisecond * 2500)
+	time.Sleep(time.Millisecond * 500)
 	log.Info().Ints("client", clientReceiveQueue).Msg("done")
 	log.Info().Ints("server", serverReceiveQueue).Msg("done")
 
+	assert.Equal(t, len(serverReceiveQueue), len(clientSendQueue))
 	assert.Equal(t, len(clientReceiveQueue), len(clientSendQueue))
 
-	//for i := 0; i < 50; i++ {
-	//	found := false
-	//	for _, d := range clientReceiveQueue {
-	//		if d == i+1 {
-	//			found = true
-	//			break
-	//		}
-	//	}
-	//	assert.True(t, found)
-	//}
+	for i, v := range clientSendQueue {
+		assert.Equal(t, len(v), clientReceiveQueue[i])
+	}
 
 }
 
 func TestMain(m *testing.M) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05,000"}).Level(zerolog.TraceLevel)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05,000"}).Level(zerolog.DebugLevel)
 	code := m.Run()
 	os.Exit(code)
 }

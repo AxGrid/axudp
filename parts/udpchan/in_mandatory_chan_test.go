@@ -33,7 +33,7 @@ func TestInMandatoryChannelChunk(t *testing.T) {
 	packetWaitTTL = time.Millisecond * 10
 	packetDoneTTL = time.Millisecond * 40
 
-	imc := NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, 100, srvChan, sendChan, errorChan)
+	imc := NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, 100, srvChan, sendChan, errorChan, log.With().Logger())
 	imc.Receive(&pproto.Packet{
 		Id:         1,
 		Parts:      booleansToBytes([]bool{true, false}),
@@ -75,7 +75,7 @@ func TestNewInMandatoryChannel(t *testing.T) {
 
 	packetWaitTTL = time.Millisecond * 10
 	packetDoneTTL = time.Millisecond * 40
-	imc := NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, 100, srvChan, sendChan, errorChan)
+	imc := NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, 100, srvChan, sendChan, errorChan, log.With().Logger())
 	imc.Receive(&pproto.Packet{
 		Id:         1,
 		Parts:      booleansToBytes([]bool{true}),
@@ -106,8 +106,8 @@ func TestInOutMandatoryChannel(t *testing.T) {
 	packetWaitTTL = time.Millisecond * 10
 	packetDoneTTL = time.Millisecond * 40
 
-	imc := NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, 100, srvChan, sendChanI, errorChan)
-	omc := NewOutMandatoryChannel(100, sendChanO, errorChan)
+	imc := NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, 100, srvChan, sendChanI, errorChan, log.With().Logger())
+	omc := NewOutMandatoryChannel(100, sendChanO, errorChan, log.With().Logger())
 
 	go func() {
 		for {

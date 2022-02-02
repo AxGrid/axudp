@@ -3,6 +3,7 @@ package transport
 import (
 	"axudp/parts/udpchan"
 	pproto "axudp/target/generated-sources/proto/axudp"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 	"net"
@@ -18,6 +19,7 @@ type Connection struct {
 	inMandatoryConsistent  *udpchan.InMandatoryChannel
 	outMandatory           *udpchan.OutMandatoryChannel
 	outMandatoryConsistent *udpchan.OutMandatoryConsistentChannel
+	log                    zerolog.Logger
 }
 
 func NewConnection(remoteAddrStr string, errorServerChan chan ConnectionResponse, send func([]byte), service func([]byte)) *Connection {
@@ -26,13 +28,14 @@ func NewConnection(remoteAddrStr string, errorServerChan chan ConnectionResponse
 		mtu:           startMTU,
 		errorChan:     make(chan error),
 		close:         make(chan bool, 1),
+		log:           log.With().Str("addr", remoteAddrStr).Logger(),
 	}
 	servChan := make(chan []byte)
 	sendChan := make(chan []byte)
-	res.inMandatory = udpchan.NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, res.mtu, servChan, sendChan, res.errorChan)
-	res.inMandatoryConsistent = udpchan.NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY_CONSISTENTLY, res.mtu, servChan, sendChan, res.errorChan)
-	res.outMandatory = udpchan.NewOutMandatoryChannel(res.mtu, sendChan, res.errorChan)
-	res.outMandatoryConsistent = udpchan.NewOutMandatoryConsistentChannel(res.mtu, sendChan, res.errorChan)
+	res.inMandatory = udpchan.NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, res.mtu, servChan, sendChan, res.errorChan, res.log)
+	res.inMandatoryConsistent = udpchan.NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY_CONSISTENTLY, res.mtu, servChan, sendChan, res.errorChan, res.log)
+	res.outMandatory = udpchan.NewOutMandatoryChannel(res.mtu, sendChan, res.errorChan, res.log)
+	res.outMandatoryConsistent = udpchan.NewOutMandatoryConsistentChannel(res.mtu, sendChan, res.errorChan, res.log)
 
 	go func() {
 		for {

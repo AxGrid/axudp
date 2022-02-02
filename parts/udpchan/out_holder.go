@@ -3,13 +3,13 @@ package udpchan
 import (
 	pproto "axudp/target/generated-sources/proto/axudp"
 	"errors"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
 )
 
-var packetRetryTTL = time.Millisecond * 200
+var packetRetryTTL = time.Millisecond * 100
 var packetRetryCount = 5
 
 type HolderResponse struct {
@@ -28,13 +28,13 @@ type OutHolder struct {
 	sendChan     chan []byte
 	closeChan    chan bool
 	lock         sync.Mutex
+	log          zerolog.Logger
 }
 
-func NewOutHolder(id uint64, payload []byte, mtu int, responseChan chan HolderResponse, mode pproto.PacketMode, sendChan chan []byte) (*OutHolder, error) {
+func NewOutHolder(id uint64, payload []byte, mtu int, responseChan chan HolderResponse, mode pproto.PacketMode, sendChan chan []byte, llog zerolog.Logger) (*OutHolder, error) {
 	chunks := getChunk(payload, mtu)
 	partsCount := len(chunks)
 	outPacket := make([][]byte, partsCount)
-	log.Trace().Str("class", "out_holder").Int("parts", partsCount).Int("mtu", mtu).Hex("hex", payload).Msg("create out holder")
 	tag := pproto.PacketTag_PT_PAYLOAD
 	var err error
 	for i, chunk := range chunks {
@@ -55,24 +55,34 @@ func NewOutHolder(id uint64, payload []byte, mtu int, responseChan chan HolderRe
 		}
 	}
 
-	return &OutHolder{
+	res := &OutHolder{
 		id:           id,
 		responseChan: responseChan,
 		sendChan:     sendChan,
 		parts:        make([]bool, partsCount),
 		outs:         outPacket,
 		closeChan:    nil,
-	}, nil
+		log:          llog.With().Str("mode", mode.String()).Int("size", len(payload)).Int("mtu", mtu).Uint64("id", id).Str("holder", "out_holder").Int("partCount", partsCount).Logger(),
+	}
+	res.log.Trace().Msg("create holder")
+	return res, nil
 }
 
 func (h *OutHolder) Response(pck *pproto.Packet) {
+	if pck.Id != h.id {
+		return
+	}
 	h.lock.Lock()
+	defer h.lock.Unlock()
 	mergeBoolLists(&h.parts, bytesToBooleans(pck.Parts))
-	h.lock.Unlock()
-	if allBooleans(h.parts) {
+
+	if allBooleans(h.parts) && !h.done {
+		h.log.Trace().Bools("parts", h.parts).Msg("holder done")
 		h.done = true
 		h.responseChan <- HolderResponse{id: h.id}
 		h.Stop()
+	} else {
+		h.log.Trace().Bools("parts", h.parts).Msg("holder collect")
 	}
 }
 
@@ -103,7 +113,7 @@ func (h *OutHolder) Start() {
 					}
 					break MainLoop
 				} else {
-					log.Trace().Uint64("id", h.id).Bools("parts", h.parts).Msg("retry")
+					h.log.Trace().Bools("parts", h.parts).Msg("retry")
 					go func() { h.send() }()
 				}
 			}
