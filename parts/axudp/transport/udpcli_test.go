@@ -61,6 +61,9 @@ func TestMandatoryClientServer(t *testing.T) {
 	log.Info().Ints("client", clientReceiveQueue).Msg("done")
 	log.Info().Ints("server", serverReceiveQueue).Msg("done")
 
+	cli.Stop()
+	srv.Stop()
+	time.Sleep(time.Millisecond * 20)
 }
 
 func TestMandatoryConsistentClientServer(t *testing.T) {

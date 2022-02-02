@@ -1,7 +1,7 @@
 package transport
 
 import (
-	"axudp/parts/udpchan"
+	udpchan2 "axudp/parts/axudp/udpchan"
 	pproto "axudp/target/generated-sources/proto/axudp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -15,10 +15,10 @@ type Connection struct {
 	close                  chan bool
 	mtu                    int
 	errorChan              chan error
-	inMandatory            *udpchan.InMandatoryChannel
-	inMandatoryConsistent  *udpchan.InMandatoryChannel
-	outMandatory           *udpchan.OutMandatoryChannel
-	outMandatoryConsistent *udpchan.OutMandatoryConsistentChannel
+	inMandatory            *udpchan2.InMandatoryChannel
+	inMandatoryConsistent  *udpchan2.InMandatoryChannel
+	outMandatory           *udpchan2.OutMandatoryChannel
+	outMandatoryConsistent *udpchan2.OutMandatoryConsistentChannel
 	log                    zerolog.Logger
 }
 
@@ -32,10 +32,10 @@ func NewConnection(remoteAddrStr string, errorServerChan chan ConnectionResponse
 	}
 	servChan := make(chan []byte)
 	sendChan := make(chan []byte)
-	res.inMandatory = udpchan.NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, res.mtu, servChan, sendChan, res.errorChan, res.log)
-	res.inMandatoryConsistent = udpchan.NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY_CONSISTENTLY, res.mtu, servChan, sendChan, res.errorChan, res.log)
-	res.outMandatory = udpchan.NewOutMandatoryChannel(res.mtu, sendChan, res.errorChan, res.log)
-	res.outMandatoryConsistent = udpchan.NewOutMandatoryConsistentChannel(res.mtu, sendChan, res.errorChan, res.log)
+	res.inMandatory = udpchan2.NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY, res.mtu, servChan, sendChan, res.errorChan, res.log)
+	res.inMandatoryConsistent = udpchan2.NewInMandatoryChannel(pproto.PacketMode_PM_MANDATORY_CONSISTENTLY, res.mtu, servChan, sendChan, res.errorChan, res.log)
+	res.outMandatory = udpchan2.NewOutMandatoryChannel(res.mtu, sendChan, res.errorChan, res.log)
+	res.outMandatoryConsistent = udpchan2.NewOutMandatoryConsistentChannel(res.mtu, sendChan, res.errorChan, res.log)
 
 	go func() {
 		for {

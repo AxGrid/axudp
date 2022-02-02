@@ -83,7 +83,7 @@ func (s *Server) readLoop() {
 		cnt, remoteAddr, err := s.srv.ReadFromUDP(p)
 		if err != nil {
 			log.Error().Err(err).Str("remote", remoteAddr.String()).Msg("error read from udp")
-			continue
+			break
 		}
 		slice := make([]byte, cnt)
 		copy(slice, p[:cnt])
@@ -116,4 +116,5 @@ func (s *Server) readLoop() {
 			}
 		}(slice, remoteAddr)
 	}
+	log.Debug().Msg("server read loop closed")
 }

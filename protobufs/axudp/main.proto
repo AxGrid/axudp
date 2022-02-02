@@ -1,35 +1,33 @@
 syntax="proto3";
 
-package com.axgrid.gomino;
+package com.axgrid.udp;
 
-option java_package = "com.axgrid.gomino";
+option java_package = "com.axgrid.udp";
 option java_multiple_files = true;
 option csharp_namespace = "AxGrid.Internal.Proto";
 
 enum PacketMode {
-    PM_OPTIONAL_CONSISTENTLY = 0;
-    PM_OPTIONAL = 1;
-    PM_MANDATORY_CONSISTENTLY = 3;
-    PM_MANDATORY = 4;
+    PM_OPTIONAL_CONSISTENTLY = 0;  // Optional last id
+    PM_OPTIONAL = 1;               // Optional
+    PM_MANDATORY_CONSISTENTLY = 3; // Mandatory ordered
+    PM_MANDATORY = 4;              // Mandatory unordered
+    PM_SERVICE = 10;               // Service layer
 }
 
-
 enum PacketTag {
-    PT_PAYLOAD = 0;  // пришли обычные данные
-    PT_GZIP_PAYLOAD = 1; // пришли запакованные данные
-    PT_PING = 7;      // Служебный пинг
-    PT_DONE = 8;     // данные о завершении частей пакета
-    PT_OUTDATE = 9;  // пакет устарел, повторять не нужно
-    PT_ERROR = 10;   // в пакете какая-то ошибка и его нужно полностью повторить или отбросить
+    PT_PAYLOAD = 0;      // Plain payload
+    PT_GZIP_PAYLOAD = 1; // GZip payload
+    PT_PING = 7;         // Ping
+    PT_DONE = 8;         // Packet response
 }
 
 message Packet {
-    bytes payload = 1;
-    uint64 id = 2;
-    PacketTag tag = 3;
-    bytes parts = 4;
-    uint32 parts_count = 5;
-    PacketMode mode = 6;
-    uint32 mtu = 7;
+    bytes payload = 1;      // Payload
+    uint64 id = 2;          // ID
+    PacketTag tag = 3;      // TAG
+    bytes parts = 4;        // PARTS in Bytes
+    uint32 parts_count = 5; // PARTS_COUNT
+    PacketMode mode = 6;    // MODE
+    uint32 mtu = 7;         // Current MTU
 }
 

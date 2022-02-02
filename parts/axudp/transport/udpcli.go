@@ -26,10 +26,11 @@ func NewClient(host string, port int) (*Client, error) {
 	res := &Client{
 		errorChan: errorChan,
 		cli:       conn,
+		close:     make(chan bool, 1),
 	}
 
 	res.connection = NewConnection(rs, errorChan, func(bytes []byte) {
-		log.Trace().Str("class", "udpcli").Hex("hex", bytes).Msg("send")
+		//log.Trace().Str("class", "udpcli").Hex("hex", bytes).Msg("send")
 		_, werr := conn.Write(addSize(bytes))
 		if werr != nil {
 			log.Error().Err(err).Msg("client connection error")
@@ -51,6 +52,8 @@ func NewClient(host string, port int) (*Client, error) {
 func (c *Client) Start() {
 	go c.readLoop()
 	go func() {
+		log.Debug().Msg("client started")
+	MainLoop:
 		for {
 			select {
 			case err := <-c.errorChan:
@@ -58,13 +61,18 @@ func (c *Client) Start() {
 					c.serviceError(err.err, c.connection.remoteAddrStr)
 				}
 				c.cli.Close()
-				return
+				break MainLoop
 			case <-c.close:
 				c.cli.Close()
-				return
+				break MainLoop
 			}
 		}
+		log.Debug().Msg("client closed")
 	}()
+}
+
+func (c *Client) Stop() {
+	c.close <- true
 }
 
 func (c *Client) readLoop() {
@@ -73,6 +81,7 @@ func (c *Client) readLoop() {
 		cnt, err := c.cli.Read(p)
 		if err != nil {
 			c.errorChan <- ConnectionResponse{err: err, address: c.connection.remoteAddrStr}
+			break
 		}
 		slice := make([]byte, cnt)
 		copy(slice, p[:cnt])
@@ -83,6 +92,7 @@ func (c *Client) readLoop() {
 			}
 		}(slice)
 	}
+	log.Debug().Msg("client read loop terminated")
 }
 
 func (c *Client) Send(mode pproto.PacketMode, payload []byte) {
