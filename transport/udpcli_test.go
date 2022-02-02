@@ -11,7 +11,7 @@ import (
 )
 
 func TestMandatoryClientServer(t *testing.T) {
-	startMTU = 3
+	startMTU = 5
 	srv, err := NewServer("0.0.0.0", 9100)
 	assert.Nil(t, err)
 	cli, err := NewClient("127.0.0.1", 9100)
@@ -27,7 +27,7 @@ func TestMandatoryClientServer(t *testing.T) {
 	var clientReceiveQueue []int
 	var serverReceiveQueue []int
 
-	srv.serviceListener = func(payload []byte, addr string, con IConnect) error {
+	srv.ServiceListener = func(payload []byte, addr string, con IConnect) error {
 		log.Debug().Hex("payload", payload).Str("addr", addr).Msg("server receive")
 		serverReceiveQueue = append(serverReceiveQueue, len(payload))
 		go func() {
@@ -67,7 +67,7 @@ func TestMandatoryClientServer(t *testing.T) {
 }
 
 func TestMandatoryConsistentClientServer(t *testing.T) {
-	startMTU = 3
+	startMTU = 5
 	srv, err := NewServer("0.0.0.0", 9100)
 	assert.Nil(t, err)
 	cli, err := NewClient("127.0.0.1", 9100)
@@ -83,7 +83,7 @@ func TestMandatoryConsistentClientServer(t *testing.T) {
 	var clientReceiveQueue []int
 	var serverReceiveQueue []int
 
-	srv.serviceListener = func(payload []byte, addr string, con IConnect) error {
+	srv.ServiceListener = func(payload []byte, addr string, con IConnect) error {
 		log.Debug().Hex("payload", payload).Str("addr", addr).Int("len", len(payload)).Msg("server receive")
 		serverReceiveQueue = append(serverReceiveQueue, len(payload))
 		go func() {

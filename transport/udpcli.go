@@ -33,7 +33,7 @@ func NewClient(host string, port int) (*Client, error) {
 		//log.Trace().Str("class", "udpcli").Hex("hex", bytes).Msg("send")
 		_, werr := conn.Write(addSize(bytes))
 		if werr != nil {
-			log.Error().Err(err).Msg("client connection error")
+			log.Error().Err(werr).Msg("client connection error")
 			errorChan <- ConnectionResponse{err: werr, address: rs}
 		}
 	}, func(bytes []byte) {
