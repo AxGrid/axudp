@@ -11,8 +11,8 @@ type Client struct {
 	connection      *Connection
 	errorChan       chan ConnectionResponse
 	close           chan bool
-	serviceError    func(err error, addr string)
-	serviceListener func(payload []byte, addr string, con IConnect) error
+	ServiceError    func(err error, addr string)
+	ServiceListener func(payload []byte, addr string, con IConnect) error
 	cli             net.Conn
 }
 
@@ -38,7 +38,7 @@ func NewClient(host string, port int) (*Client, error) {
 		}
 	}, func(bytes []byte) {
 		if res.connection != nil {
-			serr := res.serviceListener(bytes, rs, res)
+			serr := res.ServiceListener(bytes, rs, res)
 			if serr != nil {
 				res.errorChan <- ConnectionResponse{err: serr, address: rs}
 			}
@@ -57,8 +57,8 @@ func (c *Client) Start() {
 		for {
 			select {
 			case err := <-c.errorChan:
-				if c.serviceError != nil {
-					c.serviceError(err.err, c.connection.remoteAddrStr)
+				if c.ServiceError != nil {
+					c.ServiceError(err.err, c.connection.remoteAddrStr)
 				}
 				c.cli.Close()
 				break MainLoop

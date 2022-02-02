@@ -36,7 +36,7 @@ func TestMandatoryClientServer(t *testing.T) {
 		return nil
 	}
 
-	cli.serviceListener = func(payload []byte, addr string, con IConnect) error {
+	cli.ServiceListener = func(payload []byte, addr string, con IConnect) error {
 		log.Debug().Hex("payload", payload).Str("addr", addr).Msg("client receive")
 		clientReceiveQueue = append(clientReceiveQueue, len(payload))
 		return nil
@@ -92,7 +92,7 @@ func TestMandatoryConsistentClientServer(t *testing.T) {
 		return nil
 	}
 
-	cli.serviceListener = func(payload []byte, addr string, con IConnect) error {
+	cli.ServiceListener = func(payload []byte, addr string, con IConnect) error {
 		log.Debug().Hex("payload", payload).Str("addr", addr).Int("len", len(payload)).Msg("client receive")
 		clientReceiveQueue = append(clientReceiveQueue, len(payload))
 		return nil

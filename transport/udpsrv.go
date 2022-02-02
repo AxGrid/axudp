@@ -21,8 +21,8 @@ type IConnect interface {
 type Server struct {
 	connections     map[string]*Connection
 	errorChan       chan ConnectionResponse
-	serviceError    func(err error, addr string)
-	serviceListener func(payload []byte, addr string, con IConnect) error
+	ServiceError    func(err error, addr string)
+	ServiceListener func(payload []byte, addr string, con IConnect) error
 	srv             *net.UDPConn
 	lock            sync.RWMutex
 	close           chan bool
@@ -63,8 +63,8 @@ func (s *Server) Start() {
 				log.Error().Err(err.err).Str("addr", err.address).Msg("error in connection")
 				s.lock.Lock()
 				conn, ok := s.connections[err.address]
-				if ok && s.serviceError != nil {
-					s.serviceError(err.err, conn.remoteAddrStr)
+				if ok && s.ServiceError != nil {
+					s.ServiceError(err.err, conn.remoteAddrStr)
 				}
 				delete(s.connections, err.address)
 				s.lock.Unlock()
@@ -98,8 +98,8 @@ func (s *Server) readLoop() {
 						s.errorChan <- ConnectionResponse{address: conn.remoteAddrStr, err: cerr}
 					}
 				}, func(bytes []byte) {
-					if s.serviceListener != nil {
-						serr := s.serviceListener(bytes, conn.remoteAddrStr, conn)
+					if s.ServiceListener != nil {
+						serr := s.ServiceListener(bytes, conn.remoteAddrStr, conn)
 						if serr != nil {
 							s.errorChan <- ConnectionResponse{address: conn.remoteAddrStr, err: serr}
 						}
