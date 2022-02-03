@@ -12,6 +12,23 @@ import (
 var packetRetryTTL = time.Millisecond * 100
 var packetRetryCount = 5
 
+var timeOutRetryMap = map[int]time.Duration{
+	0:  time.Millisecond * 100,
+	5:  time.Millisecond * 200,
+	10: time.Millisecond * 500,
+	20: time.Millisecond * 1000,
+}
+
+func getTimeout(retryCount int) time.Duration {
+	var res time.Duration = 0
+	for k, v := range timeOutRetryMap {
+		if retryCount >= k {
+			res = v
+		}
+	}
+	return res
+}
+
 type HolderResponse struct {
 	err     error
 	id      uint64
@@ -29,6 +46,7 @@ type OutHolder struct {
 	closeChan    chan bool
 	lock         sync.Mutex
 	log          zerolog.Logger
+	tm           *time.Ticker
 }
 
 func NewOutHolder(id uint64, payload []byte, mtu int, responseChan chan HolderResponse, mode pproto.PacketMode, sendChan chan []byte, llog zerolog.Logger) (*OutHolder, error) {
@@ -74,6 +92,8 @@ func (h *OutHolder) Response(pck *pproto.Packet) {
 	}
 	h.lock.Lock()
 	defer h.lock.Unlock()
+	h.retryCount = 0
+	h.tm.Reset(timeOutRetryMap[0])
 	mergeBoolLists(&h.parts, bytesToBooleans(pck.Parts))
 
 	if allBooleans(h.parts) && !h.done {
@@ -97,28 +117,30 @@ func (h *OutHolder) Start() {
 		return
 	}
 	h.closeChan = make(chan bool, 1)
+	h.tm = time.NewTicker(packetRetryTTL)
 	go func() {
-		tm := time.NewTicker(packetRetryTTL)
 	MainLoop:
 		for {
 			select {
 			case <-h.closeChan:
 				break MainLoop
-			case <-tm.C:
+			case <-h.tm.C:
 				h.retryCount++
-				if h.retryCount >= packetRetryCount {
+				ttl := getTimeout(h.retryCount)
+				if ttl == 0 {
 					h.responseChan <- HolderResponse{
 						id:  h.id,
 						err: errors.New("max retry count"),
 					}
 					break MainLoop
 				} else {
+					h.tm.Reset(ttl)
 					h.log.Trace().Bools("parts", h.parts).Msg("retry")
 					go func() { h.send() }()
 				}
 			}
 		}
-		tm.Stop()
+		h.tm.Stop()
 	}()
 }
 
