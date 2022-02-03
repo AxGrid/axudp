@@ -5,7 +5,10 @@ import (
 	pproto "github.com/axgrid/axudp/generated-sources/proto/axudp"
 	"github.com/rs/zerolog/log"
 	"net"
+	"time"
 )
+
+var pingInterval = time.Second * 10
 
 type Client struct {
 	connection      *Connection
@@ -53,9 +56,12 @@ func (c *Client) Start() {
 	go c.readLoop()
 	go func() {
 		log.Debug().Msg("client started")
+		pingTicker := time.NewTicker(pingInterval)
 	MainLoop:
 		for {
 			select {
+			case <-pingTicker.C:
+				c.connection.ping()
 			case err := <-c.errorChan:
 				if c.ServiceError != nil {
 					c.ServiceError(err.err, c.connection.remoteAddrStr)

@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/libp2p/go-reuseport v0.1.0
 	github.com/rs/zerolog v1.23.0
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/protobuf v1.27.1

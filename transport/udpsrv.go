@@ -60,13 +60,18 @@ func (s *Server) Start() {
 				s.srv.Close()
 				return
 			case err := <-s.errorChan:
-				log.Error().Err(err.err).Str("addr", err.address).Msg("error in connection")
+
 				s.lock.Lock()
 				conn, ok := s.connections[err.address]
 				if ok && s.ServiceError != nil {
 					s.ServiceError(err.err, conn.remoteAddrStr)
 				}
 				delete(s.connections, err.address)
+				if err.err.Error() == "connection timeout" {
+					log.Debug().Str("addr", err.address).Int("size", len(s.connections)).Msg("connection timeout")
+				} else {
+					log.Error().Err(err.err).Str("addr", err.address).Int("size", len(s.connections)).Msg("error in connection")
+				}
 				s.lock.Unlock()
 			}
 		}

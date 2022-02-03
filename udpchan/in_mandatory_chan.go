@@ -39,6 +39,7 @@ func NewInMandatoryChannel(mode pproto.PacketMode, mtu int, serviceChan chan []b
 			case <-res.closeChan:
 				for _, h := range res.incoming {
 					h.Stop()
+					res.delete(h.id)
 				}
 				return
 			case r := <-res.responseChan:
@@ -48,12 +49,9 @@ func NewInMandatoryChannel(mode pproto.PacketMode, mtu int, serviceChan chan []b
 					return
 				case r.payload != nil:
 					serviceChan <- r.payload
-					break
 				default:
 					res.delete(r.id)
-					return
 				}
-
 			}
 		}
 	}()
@@ -65,7 +63,6 @@ func (c *InMandatoryChannel) Receive(pck *pproto.Packet) {
 	defer c.lock.Unlock()
 	holder, ok := c.incoming[pck.Id]
 	if !ok {
-
 		holder = NewInHolder(pck.Id, int(pck.PartsCount), c.responseChan, c.mode, c.sendChan, c.log)
 		c.incoming[pck.Id] = holder
 		holder.Start()

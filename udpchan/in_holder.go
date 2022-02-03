@@ -92,19 +92,22 @@ func (h *InHolder) Start() {
 	h.closeChan = make(chan bool, 1)
 	h.timer = time.NewTimer(packetWaitTTL)
 	go func() {
+	MainLoop:
 		for {
 			select {
 			case <-h.closeChan:
-				return
+				break MainLoop
 			case <-h.timer.C:
 				if h.done {
 					h.responseChan <- HolderResponse{id: h.id}
 				} else {
 					h.responseChan <- HolderResponse{id: h.id, err: fmt.Errorf("timeout in packet %d", h.id)}
 				}
-				return
+				break MainLoop
 			}
 		}
+		h.timer.Stop()
+		close(h.closeChan)
 	}()
 }
 

@@ -17,7 +17,8 @@ enum PacketMode {
 enum PacketTag {
     PT_PAYLOAD = 0;      // Plain payload
     PT_GZIP_PAYLOAD = 1; // GZip payload
-    PT_PING = 7;         // Ping
+    PT_PING = 6;         // Ping
+    PT_PONG = 7;         // Pong
     PT_DONE = 8;         // Packet response
 }
 
@@ -29,5 +30,6 @@ message Packet {
     uint32 parts_count = 5; // PARTS_COUNT
     PacketMode mode = 6;    // MODE
     uint32 mtu = 7;         // Current MTU
+    int64 time = 8;        // Time for ping
 }
 
